@@ -23,5 +23,10 @@ Configure as variáveis de ambiente: `cp .env.example .env`. Por fim, suba a _st
 docker compose up --force-recreate --build --remove-orphans --wait
 ```
 
-## Referências
+## Monitoramento
 
+Para acompanhar o uso das GPUs:
+
+```bash
+docker run --rm -it --runtime=nvidia --gpus all nvidia/cuda:12.8.1-base-ubuntu24.04 watch -n 1 nvidia-smi
+```
