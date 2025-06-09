@@ -23,7 +23,25 @@ Configure as variáveis de ambiente: `cp .env.example .env`. Por fim, suba a _st
 docker compose up --force-recreate --build --remove-orphans --wait
 ```
 
-## Monitoramento
+## Comandos Úteis
+
+### Instalação de LLMs
+
+Ver LLMs instaladas:
+
+```bash
+docker compose exec ollama ollama ls
+```
+
+Instalar e testar LLMs:
+
+```bash
+docker compose exec ollama ollama run gemma3:1b-it-qat
+```
+
+Ver os modelos em: https://ollama.com/search
+
+### Monitoramento
 
 Para acompanhar o uso das GPUs:
 
