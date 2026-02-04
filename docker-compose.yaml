@@ -6,7 +6,23 @@ services:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # Performance optimizations
+      - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-16384}
+      - OLLAMA_FLASH_ATTENTION=${OLLAMA_FLASH_ATTENTION:-1}
+      - OLLAMA_NEW_ENGINE=${OLLAMA_NEW_ENGINE:-1}
+      # Multi-GPU configuration (dual RTX 6000 = 48GB total)
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      # Concurrent requests handling
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
+      # Keep models loaded longer for faster responses
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-24h}
+      # Host binding for network access
+      - OLLAMA_HOST=0.0.0.0:11434
     volumes:
       - ${LLM_PATH}:/root/.ollama
     expose:
