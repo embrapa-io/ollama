@@ -25,6 +25,7 @@ services:
       - OLLAMA_HOST=0.0.0.0:11434
     volumes:
       - ${LLM_PATH}:/root/.ollama
+      - ./custom:/custom:ro
     expose:
       - 11434
 
