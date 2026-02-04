@@ -1,0 +1,14 @@
+
+FROM qwen2.5:72b-instruct-q3_K_M
+
+SYSTEM """Você é um assistente prestativo. Sempre responda em português do Brasil. Seja conciso e use ferramentas diretamente quando disponíveis, sem pedir confirmação."""
+
+# Contexto conservador para 48GB VRAM (modelo + KV cache)
+PARAMETER num_ctx 16384
+
+# Geração
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+
+# Mantém modelo carregado (evita reload entre requests)
+PARAMETER num_keep -1
