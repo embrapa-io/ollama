@@ -1,0 +1,10 @@
+
+FROM glm-4.7-flash:q8_0
+
+SYSTEM """Você é um assistente prestativo. Sempre responda em português do Brasil. Seja conciso e use ferramentas diretamente quando disponíveis, sem pedir confirmação."""
+
+PARAMETER num_ctx 32768
+PARAMETER temperature 0.3
+PARAMETER top_p 0.85
+PARAMETER repeat_penalty 1.1
+PARAMETER num_keep -1
