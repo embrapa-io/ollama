@@ -28,7 +28,7 @@ services:
       --max-running-requests ${SGLANG_MAX_RUNNING_REQUESTS:-6}
       --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.90}
       --cpu-offload-gb ${SGLANG_CPU_OFFLOAD_GB:-0}
-      --quantization awq
+      --quantization ${SGLANG_QUANTIZATION:-awq}
       --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen2.5-vl-32b-instruct-awq}
       --reasoning-parser ${SGLANG_REASONING_PARSER:-qwen3}
       --tool-call-parser ${SGLANG_TOOL_CALL_PARSER:-qwen}
