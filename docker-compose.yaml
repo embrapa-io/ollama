@@ -26,13 +26,12 @@ services:
       --tensor-parallel-size ${SGLANG_TP_SIZE:-2}
       --context-length ${SGLANG_CONTEXT_LENGTH:-131072}
       --max-running-requests ${SGLANG_MAX_RUNNING_REQUESTS:-6}
-      --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.85}
-      --cpu-offload-gb ${SGLANG_CPU_OFFLOAD_GB:-20}
+      --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.90}
+      --cpu-offload-gb ${SGLANG_CPU_OFFLOAD_GB:-0}
       --quantization awq
-      --enable-multimodal
-      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.6-35b-a3b-awq}
+      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.5-27b-awq}
       --reasoning-parser qwen3
-      --tool-call-parser qwen3_coder
+      --tool-call-parser qwen3
       --schedule-policy lpm
       --enable-mixed-chunk
     restart: unless-stopped

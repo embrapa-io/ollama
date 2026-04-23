@@ -5,8 +5,8 @@
 # não exige Python/pip no host.
 #
 # Uso:
-#   ./download-model.sh                              # usa .env
-#   ./download-model.sh QuantTrio/Qwen3.6-35B-A3B-AWQ /data/sglang/models/meu-modelo
+#   ./download-model.sh                              # usa SGLANG_MODEL_REPO + SGLANG_MODEL_PATH do .env
+#   ./download-model.sh QuantTrio/Qwen3.5-27B-AWQ /data/sglang/models/meu-modelo
 #
 # HF_TOKEN: lido do .env ou do ambiente. Se vazio e o terminal for interativo,
 # o script pergunta (obter em https://huggingface.co/settings/tokens).
@@ -24,8 +24,8 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-REPO_ID="${1:-QuantTrio/Qwen3.6-35B-A3B-AWQ}"
-TARGET_DIR="${2:-${SGLANG_MODEL_PATH:-/data/sglang/models/qwen3.6-35b-a3b-awq}}"
+REPO_ID="${1:-${SGLANG_MODEL_REPO:-QuantTrio/Qwen3.5-27B-AWQ}}"
+TARGET_DIR="${2:-${SGLANG_MODEL_PATH:-/data/sglang/models/qwen3.5-27b-awq}}"
 
 echo "→ Repositório: $REPO_ID"
 echo "→ Destino:     $TARGET_DIR"

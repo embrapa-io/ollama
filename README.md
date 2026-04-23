@@ -3,7 +3,7 @@
 
 Configuração de _deploy_ de uma _stack_ de inferência LLM em GPU Servers do ecossistema do **Embrapa I/O**, combinando:
 
-- **[SGLang](https://github.com/sgl-project/sglang)** nas GPUs — servindo o modelo `Qwen3.6-35B-A3B-AWQ` (multimodal, tool calling, reasoning) com API OpenAI-compatible.
+- **[SGLang](https://github.com/sgl-project/sglang)** nas GPUs — servindo o modelo `Qwen3.5-27B-AWQ` (dense, tool calling, reasoning) com API OpenAI-compatible.
 - **[Ollama](https://ollama.com)** em CPU — dedicado aos modelos de _embedding_ (bge-m3, nomic-embed-text, mxbai-embed-large, etc.), aproveitando o AVX-512.
 
 ## Arquitetura
@@ -11,7 +11,7 @@ Configuração de _deploy_ de uma _stack_ de inferência LLM em GPU Servers do e
 ```
 Server (dual Xeon Gold 6254, 256 GB RAM, 2× Quadro RTX 6000 24 GB)
 ├── GPU 0 ──┐
-│           ├── SGLang TP=2: Qwen3.6-35B-A3B-AWQ (128K ctx, 6 slots)
+│           ├── SGLang TP=2: Qwen3.5-27B-AWQ dense (~15 GB, 128K ctx, 6 slots)
 ├── GPU 1 ──┘   http://<host>:${PORT_SGLANG}/v1  (porta host direta, OpenAI-compatible)
 │
 └── CPU ──── Ollama (embeddings via AVX-512)
@@ -49,7 +49,7 @@ sudo chown -R $USER:$USER /data/sglang
 
 ./download-model.sh
 # ou, para outro repositório/destino:
-# ./download-model.sh QuantTrio/Qwen3.6-35B-A3B-AWQ /data/sglang/models/qwen3.6-35b-a3b-awq
+# ./download-model.sh QuantTrio/Qwen3.5-27B-AWQ /data/sglang/models/qwen3.6-35b-a3b-awq
 ```
 
 > O script lê `SGLANG_MODEL_PATH` do `.env` e usa um container `python:3.12-slim` com `huggingface_hub[cli,hf_transfer]`, sem exigir Python no host. Para modelos _gated_, exporte `HF_TOKEN` antes.
@@ -144,7 +144,8 @@ docker run --rm -it --runtime=nvidia --gpus all nvidia/cuda:12.8.1-base-ubuntu24
 
 ## Ajuste fino
 
-- **OOM no boot do SGLang** → aumentar `SGLANG_CPU_OFFLOAD_GB` (ex.: `30`), reduzir `SGLANG_CONTEXT_LENGTH` para `65536` ou `SGLANG_MAX_RUNNING_REQUESTS` para `4`.
-- **CPU offload** já vem ativo (`SGLANG_CPU_OFFLOAD_GB=20`) porque em Turing (sm_75) o kernel AWQ-MoE fundido não existe — os experts caem em FP16 e precisam de RAM como extensão da VRAM. Em GPUs sm_80+ isso pode ser zerado.
+- **OOM no boot do SGLang** → reduzir `SGLANG_MEM_FRACTION` para `0.85`, `SGLANG_CONTEXT_LENGTH` para `65536` ou ativar CPU offload (`SGLANG_CPU_OFFLOAD_GB=20`).
+- **Modelos MoE + AWQ em Turing (sm_75)**: o kernel AWQ-MoE fundido não existe; os experts caem em FP16 dequantizado e estouram a VRAM. Evitar variantes como `Qwen3.5-35B-A3B-AWQ` ou `Qwen3.6-35B-A3B-AWQ` — preferir dense.
+- **Multimodal**: `Qwen3.5-27B-AWQ` é text-only. Para modelos VL (vision-language), adicionar `--enable-multimodal` ao command do SGLang.
 - **Thinking mode** é controlado _por request_ via `chat_template_kwargs.enable_thinking` no cliente — **não** há flag de servidor para desligar globalmente.
 - Cache de compilação do SGLang vive no _volume_ nomeado `sglang-cache`; preservá-lo entre deploys é essencial.
