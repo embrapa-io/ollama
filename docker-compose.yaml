@@ -24,12 +24,12 @@ services:
       --host 0.0.0.0
       --port 30000
       --tensor-parallel-size ${SGLANG_TP_SIZE:-2}
-      --context-length ${SGLANG_CONTEXT_LENGTH:-131072}
+      --context-length ${SGLANG_CONTEXT_LENGTH:-65536}
       --max-running-requests ${SGLANG_MAX_RUNNING_REQUESTS:-6}
       --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.90}
       --cpu-offload-gb ${SGLANG_CPU_OFFLOAD_GB:-0}
       --quantization awq
-      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.5-27b-awq}
+      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen2.5-vl-32b-instruct-awq}
       --reasoning-parser ${SGLANG_REASONING_PARSER:-qwen3}
       --tool-call-parser ${SGLANG_TOOL_CALL_PARSER:-qwen}
       --schedule-policy lpm
