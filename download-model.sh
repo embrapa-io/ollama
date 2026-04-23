@@ -56,7 +56,7 @@ docker run --rm \
   -e PIP_ROOT_USER_ACTION=ignore \
   ${HF_TOKEN:+-e HF_TOKEN="$HF_TOKEN"} \
   python:3.12-slim \
-  bash -c "pip install --quiet --no-cache-dir 'huggingface_hub[cli,hf_transfer]' && \
+  bash -c "pip install --quiet --no-cache-dir 'huggingface_hub>=1.0' hf_transfer && \
            hf download '$REPO_ID' --local-dir /model"
 
 echo
