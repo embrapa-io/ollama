@@ -144,6 +144,7 @@ docker run --rm -it --runtime=nvidia --gpus all nvidia/cuda:12.8.1-base-ubuntu24
 
 ## Ajuste fino
 
-- **OOM no boot do SGLang** → reduzir `SGLANG_MEM_FRACTION` para `0.85`, `SGLANG_CONTEXT_LENGTH` para `65536` ou `SGLANG_MAX_RUNNING_REQUESTS` para `4`.
+- **OOM no boot do SGLang** → aumentar `SGLANG_CPU_OFFLOAD_GB` (ex.: `30`), reduzir `SGLANG_CONTEXT_LENGTH` para `65536` ou `SGLANG_MAX_RUNNING_REQUESTS` para `4`.
+- **CPU offload** já vem ativo (`SGLANG_CPU_OFFLOAD_GB=20`) porque em Turing (sm_75) o kernel AWQ-MoE fundido não existe — os experts caem em FP16 e precisam de RAM como extensão da VRAM. Em GPUs sm_80+ isso pode ser zerado.
 - **Thinking mode** é controlado _por request_ via `chat_template_kwargs.enable_thinking` no cliente — **não** há flag de servidor para desligar globalmente.
 - Cache de compilação do SGLang vive no _volume_ nomeado `sglang-cache`; preservá-lo entre deploys é essencial.
