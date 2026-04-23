@@ -8,8 +8,8 @@
 #   ./download-model.sh                              # usa .env
 #   ./download-model.sh QuantTrio/Qwen3.6-35B-A3B-AWQ /data/sglang/models/meu-modelo
 #
-# Variáveis opcionais:
-#   HF_TOKEN   token para modelos gated/privados (exporte antes de rodar)
+# HF_TOKEN: lido do .env ou do ambiente. Se vazio e o terminal for interativo,
+# o script pergunta (obter em https://huggingface.co/settings/tokens).
 
 set -euo pipefail
 
@@ -30,12 +30,30 @@ TARGET_DIR="${2:-${SGLANG_MODEL_PATH:-/data/sglang/models/qwen3.6-35b-a3b-awq}}"
 echo "→ Repositório: $REPO_ID"
 echo "→ Destino:     $TARGET_DIR"
 
+# Pede HF_TOKEN se vazio e estivermos em terminal interativo.
+if [[ -z "${HF_TOKEN:-}" && -t 0 ]]; then
+  echo
+  echo "HF_TOKEN não definido. Sem ele o HuggingFace aplica rate-limit agressivo"
+  echo "e modelos gated falham. Obtenha um token 'Read' em:"
+  echo "  https://huggingface.co/settings/tokens"
+  read -r -s -p "HF_TOKEN (deixe vazio para seguir sem autenticação): " HF_TOKEN
+  echo
+  export HF_TOKEN
+fi
+
+if [[ -z "${HF_TOKEN:-}" ]]; then
+  echo "⚠️  Baixando sem autenticação — sujeito a rate-limit."
+fi
+
 mkdir -p "$TARGET_DIR"
 
-# Usa HF_HUB_ENABLE_HF_TRANSFER=1 para acelerar downloads grandes.
+# HF_HUB_ENABLE_HF_TRANSFER=1 acelera downloads grandes. Flags de pip silenciam
+# o aviso de versão e o warning de root.
 docker run --rm \
   -v "$TARGET_DIR:/model" \
   -e HF_HUB_ENABLE_HF_TRANSFER=1 \
+  -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
+  -e PIP_ROOT_USER_ACTION=ignore \
   ${HF_TOKEN:+-e HF_TOKEN="$HF_TOKEN"} \
   python:3.12-slim \
   bash -c "pip install --quiet --no-cache-dir 'huggingface_hub[cli,hf_transfer]' && \

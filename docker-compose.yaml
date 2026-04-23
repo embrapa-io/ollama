@@ -50,6 +50,10 @@ services:
       - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-4}
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-24h}
       - OLLAMA_HOST=0.0.0.0:11434
+      # Tuning OpenMP (AVX-512 / NUMA dual-socket)
+      - OMP_NUM_THREADS=${OMP_NUM_THREADS:-16}
+      - OMP_PROC_BIND=${OMP_PROC_BIND:-close}
+      - OMP_PLACES=${OMP_PLACES:-cores}
     volumes:
       - ${LLM_PATH}:/root/.ollama
       - ./custom:/custom:ro
