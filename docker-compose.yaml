@@ -1,6 +1,6 @@
 services:
-  ollama:
-    image: ollama/ollama
+  sglang:
+    image: lmsysorg/sglang:latest-runtime
     runtime: nvidia
     deploy:
       resources:
@@ -9,31 +9,63 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    shm_size: 16gb
+    ipc: host
     environment:
-      # Performance optimizations
+      - NVIDIA_VISIBLE_DEVICES=${SGLANG_NVIDIA_VISIBLE_DEVICES:-all}
+    volumes:
+      - ${SGLANG_MODEL_PATH}:/model:ro
+      - sglang-cache:/root/.cache
+    ports:
+      - ${PORT_SGLANG:-11435}:30000
+    command: >
+      python3 -m sglang.launch_server
+      --model-path /model
+      --host 0.0.0.0
+      --port 30000
+      --tensor-parallel-size ${SGLANG_TP_SIZE:-2}
+      --context-length ${SGLANG_CONTEXT_LENGTH:-131072}
+      --max-running-requests ${SGLANG_MAX_RUNNING_REQUESTS:-6}
+      --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.90}
+      --quantization awq
+      --enable-multimodal
+      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.6-35b-a3b-awq}
+      --reasoning-parser qwen3
+      --tool-call-parser qwen3_coder
+      --schedule-policy lpm
+      --enable-mixed-chunk
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    environment:
+      # Força execução em CPU (embeddings). GPUs ficam dedicadas ao SGLang.
+      - CUDA_VISIBLE_DEVICES=
+      - NVIDIA_VISIBLE_DEVICES=
+      # Performance em CPU (Xeon Gold 6254 / AVX-512, 72 threads)
       - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-16384}
       - OLLAMA_FLASH_ATTENTION=${OLLAMA_FLASH_ATTENTION:-1}
       - OLLAMA_NEW_ENGINE=${OLLAMA_NEW_ENGINE:-1}
-      # Multi-GPU configuration (dual RTX 6000 = 48GB total)
-      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
-      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
-      # Concurrent requests handling
-      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
-      # Keep models loaded longer for faster responses
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-8}
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-4}
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-24h}
-      # Host binding for network access
       - OLLAMA_HOST=0.0.0.0:11434
     volumes:
       - ${LLM_PATH}:/root/.ollama
       - ./custom:/custom:ro
     expose:
       - 11434
+    restart: unless-stopped
 
   nginx:
     image: nginx:latest
     ports:
-      - ${PORT}:11434
+      - ${PORT_OLLAMA:-11434}:11434
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - ollama
+    restart: unless-stopped
+
+volumes:
+  sglang-cache:
