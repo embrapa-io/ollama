@@ -16,16 +16,21 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Carrega .env se existir (para SGLANG_MODEL_PATH padrão)
-if [[ -f .env ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-fi
+# Extrai um único valor do .env sem `source` (vars podem conter espaços e
+# tokens como `--flag`, que o bash tentaria executar como comando).
+get_env() {
+  local key="$1"
+  [[ -f .env ]] || return 0
+  grep -E "^${key}=" .env | tail -1 | sed -E "s/^${key}=//; s/^[\"'](.*)[\"']\$/\\1/"
+}
 
-REPO_ID="${1:-${SGLANG_MODEL_REPO:-QuantTrio/Qwen3.5-27B-AWQ}}"
-TARGET_DIR="${2:-${SGLANG_MODEL_PATH:-/data/sglang/models/qwen3.5-27b-awq}}"
+REPO_ID="${1:-$(get_env SGLANG_MODEL_REPO)}"
+REPO_ID="${REPO_ID:-Qwen/Qwen2.5-VL-32B-Instruct-AWQ}"
+
+TARGET_DIR="${2:-$(get_env SGLANG_MODEL_PATH)}"
+TARGET_DIR="${TARGET_DIR:-/data/sglang/models/qwen2.5-vl-32b-instruct-awq}"
+
+HF_TOKEN="${HF_TOKEN:-$(get_env HF_TOKEN)}"
 
 echo "→ Repositório: $REPO_ID"
 echo "→ Destino:     $TARGET_DIR"
