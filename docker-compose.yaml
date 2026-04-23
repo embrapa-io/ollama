@@ -34,6 +34,7 @@ services:
       --tool-call-parser ${SGLANG_TOOL_CALL_PARSER:-qwen}
       --schedule-policy lpm
       --enable-mixed-chunk
+      ${SGLANG_EXTRA_ARGS:-}
     restart: unless-stopped
 
   ollama:
