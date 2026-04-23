@@ -30,8 +30,8 @@ services:
       --cpu-offload-gb ${SGLANG_CPU_OFFLOAD_GB:-0}
       --quantization awq
       --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.5-27b-awq}
-      --reasoning-parser qwen3
-      --tool-call-parser qwen3
+      --reasoning-parser ${SGLANG_REASONING_PARSER:-qwen3}
+      --tool-call-parser ${SGLANG_TOOL_CALL_PARSER:-qwen25}
       --schedule-policy lpm
       --enable-mixed-chunk
     restart: unless-stopped
