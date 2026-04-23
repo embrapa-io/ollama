@@ -73,3 +73,9 @@ services:
 
 volumes:
   sglang-cache:
+
+networks:
+  default:
+    name: ollama
+    external: true
+
