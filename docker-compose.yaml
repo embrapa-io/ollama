@@ -2,7 +2,12 @@ services:
   sglang:
     # v0.5.14 (jun/2026) traz os backends modulares de atenção linear
     # (--linear-attn-backend triton), necessários para Qwen3.5/3.6 em Turing.
-    image: lmsysorg/sglang:v0.5.14-runtime
+    # Build local em cima da -runtime para repor deps Python faltantes
+    # (sgl-project/sglang#29650) — ver Dockerfile.sglang.
+    build:
+      context: .
+      dockerfile: Dockerfile.sglang
+    image: embrapa-io/sglang:v0.5.14-runtime-fix
     runtime: nvidia
     deploy:
       resources:

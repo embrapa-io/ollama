@@ -36,6 +36,8 @@ docker run --rm --runtime=nvidia --gpus all nvidia/cuda:12.8.1-base-ubuntu24.04 
 
 > ⚠️ **Quadro RTX 6000 (Turing, sm_75) não suporta FP8 nativo nem BF16.** Apenas AWQ INT4 ou GGUF rodam. Kernels CUTLASS DSL e FlashInfer exigem sm_80+/sm_90+ — mas o Gated DeltaNet (Qwen3.5/3.6) ganhou _backend_ triton sem piso de _compute capability_ no SGLang v0.5.13+ (`--linear-attn-backend triton`), o que desbloqueou o Qwen3.6-27B-AWQ neste hardware (ver **Roadmap**).
 
+> ⚠️ As imagens `v0.5.14*` do SGLang são **CUDA 13.0** — exigem driver NVIDIA **≥ 580** no host (conferir com `nvidia-smi`). O ramo R580 é também o **último com suporte a Turing**, então ele cobre os dois requisitos. O serviço `sglang` usa build local (`Dockerfile.sglang`) sobre a `-runtime` para repor dependências Python faltantes ([sglang#29650](https://github.com/sgl-project/sglang/issues/29650)).
+
 Para docker compose usar uma network nomeada já existente:
 
 ```bash
