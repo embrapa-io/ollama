@@ -3,7 +3,7 @@
 
 Configuração de _deploy_ de uma _stack_ de inferência LLM em GPU Servers do ecossistema do **Embrapa I/O**, combinando:
 
-- **[SGLang](https://github.com/sgl-project/sglang)** nas GPUs — servindo **`QuantTrio/Qwen3.6-27B-AWQ`** (dense, GDN híbrida, vision-language, tool calling, SWE-Bench Verified 73.4%) com API OpenAI-compatible. Em caso de falha em Turing, _rollback_ para `Qwen/Qwen2.5-VL-32B-Instruct-AWQ` (ver **Roadmap** abaixo).
+- **[vLLM](https://github.com/vllm-project/vllm)** nas GPUs — servindo **`QuantTrio/Qwen3.6-27B-AWQ`** (dense, GDN híbrida, vision-language, tool calling, SWE-Bench Verified 73.4%) com API OpenAI-compatible. Texto, **visão** e tool calling **validados em Turing em 03/jul/2026**. O serviço `sglang` permanece sob profile como referência — em Turing ele só roda text-only (ver **Roadmap**).
 - **[Ollama](https://ollama.com)** em CPU — duas funções:
   - _embeddings_ (bge-m3, nomic-embed-text, mxbai-embed-large, …) aproveitando AVX-512
   - **`qwen3.6:35b-a3b`** (MoE, 3 B ativos) como chat/agentic de contingência em CPU
@@ -13,7 +13,7 @@ Configuração de _deploy_ de uma _stack_ de inferência LLM em GPU Servers do e
 ```
 Server (dual Xeon Gold 6254, 256 GB RAM, 2× Quadro RTX 6000 24 GB)
 ├── GPU 0 ──┐
-│           ├── SGLang TP=2: Qwen3.6-27B-AWQ (~21 GB, 128K ctx, VL, GDN)
+│           ├── vLLM TP=2: Qwen3.6-27B-AWQ (~21 GB, 128K ctx, VL, GDN)
 ├── GPU 1 ──┘   http://<host>:${PORT_SGLANG}/v1  (porta host direta, OpenAI-compatible)
 │
 └── CPU ──── Ollama (AVX-512, 72 threads)
@@ -214,7 +214,7 @@ Histórico de tentativas que **não funcionam** neste hardware via SGLang — ma
 
 ## Roadmap
 
-### Qwen3.6-27B-AWQ (QuantTrio) — em validação
+### Qwen3.6-27B-AWQ (QuantTrio) — ✅ validado via vLLM
 
 O AWQ saiu: [`QuantTrio/Qwen3.6-27B-AWQ`](https://huggingface.co/QuantTrio/Qwen3.6-27B-AWQ) (abril/2026, ~21 GiB, AWQ clássico gemm). E as duas condições do bloqueio anterior caíram:
 
@@ -223,17 +223,15 @@ O AWQ saiu: [`QuantTrio/Qwen3.6-27B-AWQ`](https://huggingface.co/QuantTrio/Qwen3
 
 A configuração padrão do repositório (`.env.example`, `docker-compose.yaml`) já aponta para ele: imagem pinada `v0.5.14-runtime`, `--linear-attn-backend triton` explícito, contexto 128K, parser `qwen3_coder`.
 
-**Status da validação em Turing (03/jul/2026):**
-- ❌ **Multimodal bloqueado no SGLang**: o vision encoder crasha no warmup com `no kernel image is available` (kernels fused do sgl-kernel sem cubins sm_75) — ver tabela de restrições. No SGLang, servir **text-only** (sem `--enable-multimodal`).
-- 🔄 **Path de texto (GDN + AWQ) em teste** — o crash de visão acontece antes do forward do modelo de linguagem, então o GDN em sm_75 ainda não foi exercitado. Risco remanescente: kernels triton do `fla/chunk` excederem os 64 KB de _shared memory_ do sm_75 (`out of resource`).
-- 🧪 **Rota para visão: vLLM** — diferente do SGLang, o vLLM mantém suporte ativo a sm_75 (fixes em jun/2026, ex. [vllm#44403](https://github.com/vllm-project/vllm/pull/44403)) e o vision encoder usa ops torch/SDPA portáveis. O serviço `vllm` (v0.24.0, profile opcional) está no compose reusando as variáveis `SGLANG_*` e a mesma porta:
+**Status da validação em Turing (03/jul/2026) — ✅ concluída via vLLM v0.24.0:**
+- ✅ **Texto (GDN + AWQ)** — primeiro forward do `GatedDeltaNet` em sm_75 OK (backend `TRITON_ATTN` auto-selecionado; FA2 rejeitado corretamente por exigir sm_80+).
+- ✅ **VISÃO** — leitura de documento em imagem base64 validada. O encoder roda via `TORCH_SDPA` (`MMEncoderAttention`), ops portáveis — a diferença decisiva para o SGLang, cujos kernels fused perderam os cubins sm_75.
+- ✅ **Tool calling** — `tool_calls` populado com parser `qwen3_coder`.
+- ✅ **Thinking per-request** — `chat_template_kwargs.enable_thinking` funciona; atenção: no vLLM o raciocínio vem no campo **`reasoning`** (no SGLang era `reasoning_content`). Clientes devem ler `message.reasoning`.
+- ❌ **SGLang segue inviável para visão em Turing** (crash `no kernel image` no warmup do vision encoder) e não há _downgrade_ possível: o fallback triton do GDN (v0.5.13+, jun/2026) chegou depois da remoção do sm_75 do sgl-kernel (antes de mai/2026) — nenhuma versão tem os dois. O serviço `sglang` fica sob profile como referência text-only:
   ```bash
-  docker compose --profile vllm pull vllm     # imagem ~11 GB
-  docker compose stop sglang                  # mesmos GPUs/porta — não rodam juntos
-  docker compose --profile vllm up -d vllm
-  docker compose logs -f vllm
+  docker compose stop vllm && docker compose --profile sglang up -d sglang
   ```
-  Se visão + GDN validarem no vLLM, ele vira o engine padrão (aposentar o serviço `sglang`). Não é _downgrade_ do SGLang: não existe versão dele com GDN-em-Turing **e** kernels de visão sm_75 ao mesmo tempo — o fallback triton do GDN (v0.5.13+, jun/2026) chegou depois da remoção do sm_75 do sgl-kernel (antes de mai/2026).
 
 **Se falhar, rollback no `.env`:**
 

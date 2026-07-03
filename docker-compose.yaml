@@ -1,5 +1,9 @@
 services:
   sglang:
+    # Mantido sob profile como referência/rollback — em Turing o SGLang atual
+    # só roda text-only (vision encoder sem cubins sm_75; ver README).
+    # Subir com: docker compose stop vllm && docker compose --profile sglang up -d sglang
+    profiles: [sglang]
     # v0.5.14 (jun/2026) traz os backends modulares de atenção linear
     # (--linear-attn-backend triton), necessários para Qwen3.5/3.6 em Turing.
     # Build local em cima da -runtime para repor deps Python faltantes
@@ -44,14 +48,12 @@ services:
       ${SGLANG_EXTRA_ARGS:-}
     restart: unless-stopped
 
-  # Rota alternativa para visão em Turing: o vLLM mantém suporte ativo a sm_75
-  # (fixes em jun/2026, ex. vllm#44403) e o vision encoder usa ops torch/SDPA,
-  # não os kernels fused que o sgl-kernel deixou de compilar para Turing.
-  # Usa a MESMA porta do sglang — os dois não podem rodar juntos:
-  #   docker compose stop sglang && docker compose --profile vllm up -d vllm
-  # (com restart unless-stopped, o sglang parado permanece parado após reboot)
+  # Engine padrão — validado em Turing em 03/jul/2026: texto (GDN), VISÃO e
+  # tool calling. O vLLM mantém suporte ativo a sm_75 (ex. vllm#44403) e o
+  # vision encoder usa ops torch/SDPA, não os kernels fused que o sgl-kernel
+  # deixou de compilar para Turing. Usa a mesma porta do sglang (profile) —
+  # os dois não podem rodar juntos.
   vllm:
-    profiles: [vllm]
     image: vllm/vllm-openai:v0.24.0-ubuntu2404
     runtime: nvidia
     deploy:
