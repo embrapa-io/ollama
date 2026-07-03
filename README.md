@@ -199,6 +199,9 @@ Histórico de tentativas que **não funcionam** neste hardware via SGLang — ma
 | `Qwen3.5-35B-A3B-AWQ` | MoE + GatedDeltaNet + VL — triplo bloqueio |
 | `Qwen3.6-27B-AWQ-INT4` (cyankiwi) | GatedDeltaNet + VL encoder + scheme compressed-tensors sem fallback em sm_75 |
 | `Qwen3.6-27B-FP8` (oficial) | sm_75 não suporta FP8 nativo |
+| `Qwen3.6-27B-AWQ` (QuantTrio) **com `--enable-multimodal`** | Vision encoder do `qwen3_vl.py` chama kernels fused do sgl-kernel sem cubins sm_75 → `CUDA error: no kernel image is available` no warmup (v0.5.14, 03/jul/2026) |
+
+> 🚨 **SGLang removeu oficialmente o suporte a Turing** — confirmado pelos mantenedores em [#24224](https://github.com/sgl-project/sglang/issues/24224) e [#24302](https://github.com/sgl-project/sglang/issues/24302) (a documentação que ainda cita sm_75+ está desatualizada). Os wheels novos do `sgl-kernel` não trazem mais cubins sm_75 para todos os kernels fused. O que ainda roda aqui depende de os paths escolhidos (triton) não tocarem nesses kernels — sem garantia de que continue rodando em versões futuras.
 
 > ℹ️ As linhas de GatedDeltaNet refletem o estado de ~abril/2026. Desde a modularização dos _backends_ de atenção linear no SGLang (`--linear-attn-backend triton`, sem piso de _compute capability_ — os pisos duros são só do `flashinfer` SM90+ e `cutedsl` Blackwell), esse bloqueio deixou de ser estrutural. A conv1d do GDN também tem versão triton.
 
@@ -220,9 +223,9 @@ O AWQ saiu: [`QuantTrio/Qwen3.6-27B-AWQ`](https://huggingface.co/QuantTrio/Qwen3
 
 A configuração padrão do repositório (`.env.example`, `docker-compose.yaml`) já aponta para ele: imagem pinada `v0.5.14-runtime`, `--linear-attn-backend triton` explícito, contexto 128K, parser `qwen3_coder`.
 
-**Riscos residuais (só verificáveis no host):**
-- Kernels triton do `fla/chunk` (prefill GDN) podem exceder os 64 KB de _shared memory_ do sm_75 → erro `out of resource: shared memory` em runtime. Não há guarda de capability no código — o boot vai tentar.
-- Visual encoder do `qwen3_5.py` usa a infra `VisionAttention` (mesma do Qwen2.5-VL, que funciona aqui), mas nunca foi exercitada em Turing com este modelo.
+**Status da validação em Turing (03/jul/2026):**
+- ❌ **Multimodal bloqueado**: o vision encoder crasha no warmup com `no kernel image is available` (kernels fused do sgl-kernel sem cubins sm_75) — ver tabela de restrições. Servir **text-only** (sem `--enable-multimodal`).
+- 🔄 **Path de texto (GDN + AWQ) em teste** — o crash de visão acontece antes do forward do modelo de linguagem, então o GDN em sm_75 ainda não foi exercitado. Risco remanescente: kernels triton do `fla/chunk` excederem os 64 KB de _shared memory_ do sm_75 (`out of resource`).
 
 **Se falhar, rollback no `.env`:**
 
