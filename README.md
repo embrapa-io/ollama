@@ -14,13 +14,16 @@ Configuração de _deploy_ de uma _stack_ de inferência LLM em GPU Servers do e
 Server (dual Xeon Gold 6254, 256 GB RAM, 2× Quadro RTX 6000 24 GB)
 ├── GPU 0 ──┐
 │           ├── vLLM TP=2: Qwen3.6-27B-AWQ (~21 GB, 128K ctx, VL, GDN)
-├── GPU 1 ──┘   http://<host>:${PORT_SGLANG}/v1  (porta host direta, OpenAI-compatible)
+├── GPU 1 ──┘   http://<host>:${PORT_OLLAMA}/v1 (via nginx — rota aberta p/ ecossistema)
+│               http://<host>:${PORT_SGLANG}/v1 (porta direta — filtrada pelo firewall)
 │
 └── CPU ──── Ollama (AVX-512, 72 threads)
-              http://<host>:${PORT_OLLAMA}      (atrás do nginx → bloqueia /api/pull etc.)
-              • embeddings
+              http://<host>:${PORT_OLLAMA}/api/* (nginx → bloqueia /api/pull etc.)
+              • embeddings (nó/API nativa: /api/embeddings)
               • qwen3.6:35b-a3b (chat/agentic de contingência)
 ```
+
+> 🔀 **Roteamento do nginx na porta ${PORT_OLLAMA} (11434):** `/v1/*` → **vLLM** (API OpenAI-compatible: chat, visão, tools); todo o resto (`/api/*` etc.) → **Ollama** (API nativa). Motivo: o firewall da TI filtra a 11435 para as VMs do ecossistema (confirmado em 03/07/2026 a partir da VM n8n), enquanto a 11434 já está liberada. Clientes OpenAI (Open WebUI, n8n "OpenAI Chat Model") apontam `base_url` para `http://llm.nuvem.ti.embrapa.br:11434/v1` com API key dummy. Pedido de liberação da 11435 segue pendente como melhoria.
 
 ## Requisitos
 
