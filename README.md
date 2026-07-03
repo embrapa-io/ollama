@@ -224,8 +224,16 @@ O AWQ saiu: [`QuantTrio/Qwen3.6-27B-AWQ`](https://huggingface.co/QuantTrio/Qwen3
 A configuração padrão do repositório (`.env.example`, `docker-compose.yaml`) já aponta para ele: imagem pinada `v0.5.14-runtime`, `--linear-attn-backend triton` explícito, contexto 128K, parser `qwen3_coder`.
 
 **Status da validação em Turing (03/jul/2026):**
-- ❌ **Multimodal bloqueado**: o vision encoder crasha no warmup com `no kernel image is available` (kernels fused do sgl-kernel sem cubins sm_75) — ver tabela de restrições. Servir **text-only** (sem `--enable-multimodal`).
+- ❌ **Multimodal bloqueado no SGLang**: o vision encoder crasha no warmup com `no kernel image is available` (kernels fused do sgl-kernel sem cubins sm_75) — ver tabela de restrições. No SGLang, servir **text-only** (sem `--enable-multimodal`).
 - 🔄 **Path de texto (GDN + AWQ) em teste** — o crash de visão acontece antes do forward do modelo de linguagem, então o GDN em sm_75 ainda não foi exercitado. Risco remanescente: kernels triton do `fla/chunk` excederem os 64 KB de _shared memory_ do sm_75 (`out of resource`).
+- 🧪 **Rota para visão: vLLM** — diferente do SGLang, o vLLM mantém suporte ativo a sm_75 (fixes em jun/2026, ex. [vllm#44403](https://github.com/vllm-project/vllm/pull/44403)) e o vision encoder usa ops torch/SDPA portáveis. O serviço `vllm` (v0.24.0, profile opcional) está no compose reusando as variáveis `SGLANG_*` e a mesma porta:
+  ```bash
+  docker compose --profile vllm pull vllm     # imagem ~11 GB
+  docker compose stop sglang                  # mesmos GPUs/porta — não rodam juntos
+  docker compose --profile vllm up -d vllm
+  docker compose logs -f vllm
+  ```
+  Se visão + GDN validarem no vLLM, ele vira o engine padrão (aposentar o serviço `sglang`). Não é _downgrade_ do SGLang: não existe versão dele com GDN-em-Turing **e** kernels de visão sm_75 ao mesmo tempo — o fallback triton do GDN (v0.5.13+, jun/2026) chegou depois da remoção do sm_75 do sgl-kernel (antes de mai/2026).
 
 **Se falhar, rollback no `.env`:**
 

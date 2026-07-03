@@ -44,6 +44,55 @@ services:
       ${SGLANG_EXTRA_ARGS:-}
     restart: unless-stopped
 
+  # Rota alternativa para visão em Turing: o vLLM mantém suporte ativo a sm_75
+  # (fixes em jun/2026, ex. vllm#44403) e o vision encoder usa ops torch/SDPA,
+  # não os kernels fused que o sgl-kernel deixou de compilar para Turing.
+  # Usa a MESMA porta do sglang — os dois não podem rodar juntos:
+  #   docker compose stop sglang && docker compose --profile vllm up -d vllm
+  # (com restart unless-stopped, o sglang parado permanece parado após reboot)
+  vllm:
+    profiles: [vllm]
+    image: vllm/vllm-openai:v0.24.0-ubuntu2404
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: 16gb
+    ipc: host
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${SGLANG_NVIDIA_VISIBLE_DEVICES:-all}
+      - VLLM_SLEEP_WHEN_IDLE=1
+      - VLLM_USE_FLASHINFER_SAMPLER=0
+      # Turing: força triton nas camadas full-attention — a auto-seleção em
+      # sm_75 ainda tem arestas (vllm#44403).
+      - VLLM_ATTENTION_BACKEND=${VLLM_ATTENTION_BACKEND:-TRITON_ATTN}
+    volumes:
+      - ${SGLANG_MODEL_PATH:?defina no .env (cp .env.example .env)}:/model:ro
+      - vllm-cache:/root/.cache
+    ports:
+      - ${PORT_SGLANG:-11435}:8000
+    command: >
+      vllm serve /model
+      --host 0.0.0.0
+      --port 8000
+      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.6-27b-awq}
+      --tensor-parallel-size ${SGLANG_TP_SIZE:-2}
+      --max-model-len ${SGLANG_CONTEXT_LENGTH:-131072}
+      --max-num-seqs ${SGLANG_MAX_RUNNING_REQUESTS:-6}
+      --gpu-memory-utilization ${SGLANG_MEM_FRACTION:-0.90}
+      --swap-space 16
+      --dtype float16
+      --quantization awq
+      --reasoning-parser qwen3
+      --tool-call-parser qwen3_coder
+      --enable-auto-tool-choice
+      --trust-remote-code
+    restart: unless-stopped
+
   ollama:
     image: ollama/ollama
     environment:
@@ -81,6 +130,7 @@ services:
 
 volumes:
   sglang-cache:
+  vllm-cache:
 
 networks:
   default:
