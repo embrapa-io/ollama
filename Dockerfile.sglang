@@ -4,7 +4,11 @@
 # Bug upstream: sgl-project/sglang#29650; fix pendente em #29743.
 # Remover este Dockerfile (e voltar a usar a imagem direto no compose) quando
 # o upstream publicar uma -runtime corrigida.
-FROM lmsysorg/sglang:v0.5.14-runtime
+#
+# Variante cu129 (CUDA 12.9), não a default (CUDA 13.0): o host roda driver
+# R570 (CUDA 12.8) e o Ubuntu 20.04 não tem driver 580+ empacotado no apt.
+# CUDA 12.9 roda em driver >= 525 via minor version compatibility.
+FROM lmsysorg/sglang:v0.5.14-cu129-runtime
 
 RUN python3 -m pip install --no-cache-dir --ignore-installed \
     cryptography \

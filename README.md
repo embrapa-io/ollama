@@ -36,7 +36,7 @@ docker run --rm --runtime=nvidia --gpus all nvidia/cuda:12.8.1-base-ubuntu24.04 
 
 > ⚠️ **Quadro RTX 6000 (Turing, sm_75) não suporta FP8 nativo nem BF16.** Apenas AWQ INT4 ou GGUF rodam. Kernels CUTLASS DSL e FlashInfer exigem sm_80+/sm_90+ — mas o Gated DeltaNet (Qwen3.5/3.6) ganhou _backend_ triton sem piso de _compute capability_ no SGLang v0.5.13+ (`--linear-attn-backend triton`), o que desbloqueou o Qwen3.6-27B-AWQ neste hardware (ver **Roadmap**).
 
-> ⚠️ As imagens `v0.5.14*` do SGLang são **CUDA 13.0** — exigem driver NVIDIA **≥ 580** no host (conferir com `nvidia-smi`). O ramo R580 é também o **último com suporte a Turing**, então ele cobre os dois requisitos. O serviço `sglang` usa build local (`Dockerfile.sglang`) sobre a `-runtime` para repor dependências Python faltantes ([sglang#29650](https://github.com/sgl-project/sglang/issues/29650)).
+> ⚠️ **CUDA da imagem × driver do host:** a `v0.5.14-runtime` default é **CUDA 13.0** e exige driver ≥ 580 — indisponível via apt no Ubuntu 20.04 (o repo da NVIDIA para em 570/575). Por isso o serviço `sglang` usa a variante **`cu129`** (CUDA 12.9), que roda no driver **R570** do host via _minor version compatibility_ (requer ≥ 525; `NVIDIA_DISABLE_REQUIRE=1` no compose desliga o gate do container toolkit). O build local (`Dockerfile.sglang`) também repõe dependências Python faltantes na `-runtime` ([sglang#29650](https://github.com/sgl-project/sglang/issues/29650)). Se o host for reinstalado com Ubuntu 24.04, o ramo **R580** (último com suporte a Turing) libera as imagens CUDA 13.
 
 Para docker compose usar uma network nomeada já existente:
 
