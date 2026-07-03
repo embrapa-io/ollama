@@ -1,10 +1,11 @@
 #!/bin/bash
 #
-# Túnel SSH para o SGLang do GPU Server da GTI:
-#   estação local → embrapa@core.embrapa.io → llm.nuvem.ti.embrapa.br:11435
+# Túnel SSH para o LLM server do GPU Server da GTI, em DOIS saltos:
+#   estação local ──ssh──▶ embrapa@core.embrapa.io ──ssh──▶ embrapa@llm:11435
 #
-# O salto core→llm é um encaminhamento TCP feito pelo core (flag -L), portanto
-# não exige chave SSH sua no llm — basta o core alcançar a porta 11435.
+# Dois saltos porque o firewall entre core e llm filtra a porta 11435 (só o
+# SSH/22 atravessa) — o encaminhamento TCP direto pelo core não funciona.
+# O 2º salto usa a chave SSH que o core já tem para o llm (BatchMode).
 #
 # Uso:
 #   ./tunnel.sh          # abre (idempotente) e testa GET /v1/models
@@ -14,9 +15,10 @@
 set -euo pipefail
 
 JUMP="${TUNNEL_JUMP:-embrapa@core.embrapa.io}"
-TARGET_HOST="${TUNNEL_HOST:-llm.nuvem.ti.embrapa.br}"
+TARGET_SSH="${TUNNEL_TARGET_SSH:-embrapa@llm.nuvem.ti.embrapa.br}"
 TARGET_PORT="${TUNNEL_PORT:-11435}"
 LOCAL_PORT="${TUNNEL_LOCAL_PORT:-11435}"
+RELAY_PORT="${TUNNEL_RELAY_PORT:-21435}"
 CTRL="${HOME}/.ssh/ctl-sglang-tunnel.sock"
 
 is_up() { ssh -O check -S "$CTRL" "$JUMP" 2>/dev/null; }
@@ -34,11 +36,15 @@ case "${1:-up}" in
     if is_up; then
       echo "✓ Túnel já ativo"
     else
-      ssh -f -N -M -S "$CTRL" \
+      # Salto 1: local:LOCAL_PORT → core:127.0.0.1:RELAY_PORT (multiplexado em $CTRL)
+      # Salto 2 (comando remoto no core): core:RELAY_PORT → llm:127.0.0.1:TARGET_PORT
+      ssh -f -M -S "$CTRL" \
         -o ExitOnForwardFailure=yes \
         -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
-        -L "${LOCAL_PORT}:${TARGET_HOST}:${TARGET_PORT}" "$JUMP"
-      echo "✓ Túnel aberto: localhost:${LOCAL_PORT} → ${TARGET_HOST}:${TARGET_PORT} (via ${JUMP})"
+        -L "${LOCAL_PORT}:127.0.0.1:${RELAY_PORT}" "$JUMP" \
+        "ssh -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -N -L ${RELAY_PORT}:127.0.0.1:${TARGET_PORT} ${TARGET_SSH}"
+      echo "✓ Túnel aberto: localhost:${LOCAL_PORT} → ${JUMP} → ${TARGET_SSH}:${TARGET_PORT}"
+      sleep 2
     fi
     probe
     ;;
