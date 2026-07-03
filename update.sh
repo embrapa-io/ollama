@@ -16,8 +16,10 @@ docker compose pull --ignore-pull-failures --ignore-buildable
 
 docker compose up --build --force-recreate --remove-orphans --wait
 
-docker image prune -f
+# -a: com tags pinadas a imagem antiga não vira dangling após um bump
+docker image prune -af
 
-docker volume prune -f
+# filtro: não apagar volumes órfãos de outras stacks do host
+docker volume prune -f --filter label=com.docker.compose.project=ollama
 
 docker builder prune -f
