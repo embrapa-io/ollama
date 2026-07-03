@@ -52,16 +52,17 @@ fi
 
 mkdir -p "$TARGET_DIR"
 
-# HF_HUB_ENABLE_HF_TRANSFER=1 acelera downloads grandes. Flags de pip silenciam
-# o aviso de versão e o warning de root.
+# HF_XET_HIGH_PERFORMANCE=1 acelera downloads grandes (substitui o antigo
+# HF_HUB_ENABLE_HF_TRANSFER, descontinuado no huggingface_hub 1.x). Flags de
+# pip silenciam o aviso de versão e o warning de root.
 docker run --rm \
   -v "$TARGET_DIR:/model" \
-  -e HF_HUB_ENABLE_HF_TRANSFER=1 \
+  -e HF_XET_HIGH_PERFORMANCE=1 \
   -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
   -e PIP_ROOT_USER_ACTION=ignore \
   ${HF_TOKEN:+-e HF_TOKEN="$HF_TOKEN"} \
   python:3.12-slim \
-  bash -c "pip install --quiet --no-cache-dir 'huggingface_hub>=1.0' hf_transfer && \
+  bash -c "pip install --quiet --no-cache-dir 'huggingface_hub[hf_xet]>=1.0' && \
            hf download '$REPO_ID' --local-dir /model"
 
 echo
