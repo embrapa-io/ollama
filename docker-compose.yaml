@@ -75,8 +75,12 @@ services:
       - vllm-cache:/root/.cache
     ports:
       - ${PORT_SGLANG:-11435}:8000
+    # A imagem já traz ENTRYPOINT que invoca o servidor — fixamos explícito e
+    # o command carrega SÓ os argumentos (repetir "vllm serve" duplica a
+    # invocação). --swap-space foi removido no engine V1 (v0.24).
+    entrypoint: ["vllm", "serve"]
     command: >
-      vllm serve /model
+      /model
       --host 0.0.0.0
       --port 8000
       --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.6-27b-awq}
@@ -84,7 +88,6 @@ services:
       --max-model-len ${SGLANG_CONTEXT_LENGTH:-131072}
       --max-num-seqs ${SGLANG_MAX_RUNNING_REQUESTS:-6}
       --gpu-memory-utilization ${SGLANG_MEM_FRACTION:-0.90}
-      --swap-space 16
       --dtype float16
       --quantization awq
       --reasoning-parser qwen3
