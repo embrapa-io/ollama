@@ -25,10 +25,10 @@ get_env() {
 }
 
 REPO_ID="${1:-$(get_env SGLANG_MODEL_REPO)}"
-REPO_ID="${REPO_ID:-Qwen/Qwen2.5-VL-32B-Instruct-AWQ}"
+REPO_ID="${REPO_ID:-QuantTrio/Qwen3.6-27B-AWQ}"
 
 TARGET_DIR="${2:-$(get_env SGLANG_MODEL_PATH)}"
-TARGET_DIR="${TARGET_DIR:-/data/sglang/models/qwen2.5-vl-32b-instruct-awq}"
+TARGET_DIR="${TARGET_DIR:-/data/sglang/models/qwen3.6-27b-awq}"
 
 HF_TOKEN="${HF_TOKEN:-$(get_env HF_TOKEN)}"
 

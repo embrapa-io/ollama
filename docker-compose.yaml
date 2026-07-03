@@ -1,6 +1,8 @@
 services:
   sglang:
-    image: lmsysorg/sglang:latest-runtime
+    # v0.5.14 (jun/2026) traz os backends modulares de atenção linear
+    # (--linear-attn-backend triton), necessários para Qwen3.5/3.6 em Turing.
+    image: lmsysorg/sglang:v0.5.14-runtime
     runtime: nvidia
     deploy:
       resources:
@@ -14,7 +16,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=${SGLANG_NVIDIA_VISIBLE_DEVICES:-all}
     volumes:
-      - ${SGLANG_MODEL_PATH}:/model:ro
+      - ${SGLANG_MODEL_PATH:?defina no .env (cp .env.example .env)}:/model:ro
       - sglang-cache:/root/.cache
     ports:
       - ${PORT_SGLANG:-11435}:30000
@@ -29,9 +31,9 @@ services:
       --mem-fraction-static ${SGLANG_MEM_FRACTION:-0.90}
       --cpu-offload-gb ${SGLANG_CPU_OFFLOAD_GB:-0}
       --quantization ${SGLANG_QUANTIZATION:-awq}
-      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen2.5-vl-32b-instruct-awq}
+      --served-model-name ${SGLANG_SERVED_MODEL_NAME:-qwen3.6-27b-awq}
       --reasoning-parser ${SGLANG_REASONING_PARSER:-qwen3}
-      --tool-call-parser ${SGLANG_TOOL_CALL_PARSER:-qwen}
+      --tool-call-parser ${SGLANG_TOOL_CALL_PARSER:-qwen3_coder}
       --schedule-policy lpm
       --enable-mixed-chunk
       ${SGLANG_EXTRA_ARGS:-}
@@ -56,7 +58,7 @@ services:
       - OMP_PROC_BIND=${OMP_PROC_BIND:-close}
       - OMP_PLACES=${OMP_PLACES:-cores}
     volumes:
-      - ${LLM_PATH}:/root/.ollama
+      - ${LLM_PATH:?defina no .env (cp .env.example .env)}:/root/.ollama
       - ./custom:/custom:ro
     expose:
       - 11434
