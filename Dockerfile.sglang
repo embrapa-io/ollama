@@ -5,10 +5,9 @@
 # Remover este Dockerfile (e voltar a usar a imagem direto no compose) quando
 # o upstream publicar uma -runtime corrigida.
 #
-# Variante cu129 (CUDA 12.9), não a default (CUDA 13.0): o host roda driver
-# R570 (CUDA 12.8) e o Ubuntu 20.04 não tem driver 580+ empacotado no apt.
-# CUDA 12.9 roda em driver >= 525 via minor version compatibility.
-FROM lmsysorg/sglang:v0.5.14-cu129-runtime
+# Imagem default (CUDA 13.0): o host (Ubuntu 24.04) roda o driver R580 —
+# último ramo com suporte a Turing — que atende o requisito de CUDA 13.
+FROM lmsysorg/sglang:v0.5.14-runtime
 
 RUN python3 -m pip install --no-cache-dir --ignore-installed \
     cryptography \

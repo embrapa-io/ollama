@@ -7,7 +7,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.sglang
-    image: embrapa-io/sglang:v0.5.14-cu129-runtime-fix
+    image: embrapa-io/sglang:v0.5.14-runtime-fix
     runtime: nvidia
     deploy:
       resources:
@@ -20,10 +20,6 @@ services:
     ipc: host
     environment:
       - NVIDIA_VISIBLE_DEVICES=${SGLANG_NVIDIA_VISIBLE_DEVICES:-all}
-      # Host com driver R570 (CUDA 12.8) rodando imagem CUDA 12.9 via minor
-      # version compatibility — desliga o gate NVIDIA_REQUIRE_CUDA do toolkit,
-      # que pode recusar a combinação mesmo sendo suportada.
-      - NVIDIA_DISABLE_REQUIRE=1
     volumes:
       - ${SGLANG_MODEL_PATH:?defina no .env (cp .env.example .env)}:/model:ro
       - sglang-cache:/root/.cache
