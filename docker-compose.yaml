@@ -126,6 +126,11 @@ services:
   nginx:
     image: nginx:latest
     ports:
+      # Porta padrão dos clientes — sem TLS por decisão arquitetural (intranet
+      # do DC; ata GTI 03/07/2026). Requer liberação de firewall junto à GTI
+      # para os clusters (chamado aberto em 04/08/2026).
+      - ${PORT_HTTP:-80}:11434
+      # Compatibilidade durante a transição (porta original deste server).
       - ${PORT_OLLAMA:-11434}:11434
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro

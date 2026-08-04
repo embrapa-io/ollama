@@ -1,0 +1,12 @@
+FROM /root/.ollama/models/qwen3.6-35b-a3b-gguf/Qwen3.6-35B-A3B-Q4_K_M.gguf
+
+# Parâmetros otimizados para CPU inference (MoE, 3B ativos, 72 threads)
+PARAMETER num_ctx 32768
+PARAMETER num_thread 16
+PARAMETER num_keep -1
+PARAMETER temperature 0.7
+PARAMETER top_p 0.8
+PARAMETER top_k 20
+PARAMETER repeat_penalty 1.05
+
+SYSTEM """Você é um assistente prestativo. Sempre responda em português do Brasil. Seja conciso e use ferramentas diretamente quando disponíveis, sem pedir confirmação."""
