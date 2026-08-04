@@ -23,7 +23,7 @@ Server (dual Xeon Gold 6254, 256 GB RAM, 2× Quadro RTX 6000 24 GB)
               • qwen3.6:35b-a3b (chat/agentic de contingência)
 ```
 
-> 🔀 **Roteamento do nginx (portas 80 e 11434):** `/v1/*` → **vLLM** (API OpenAI-compatible: chat, visão, tools); todo o resto (`/api/*` etc.) → **Ollama** (API nativa). A **porta 80 é o padrão** (URL sem porta — `http://llm.nuvem.ti.embrapa.br/v1` —, alinhado aos demais GPU Servers da plataforma; liberação de firewall para os clusters solicitada à GTI em 04/08/2026). A **11434 segue funcional** durante a transição — clientes atuais (Open WebUI, n8n "OpenAI Chat Model") com `base_url` `http://llm.nuvem.ti.embrapa.br:11434/v1` e API key dummy continuam operando sem mudança. O firewall da TI filtra a 11435 para as VMs do ecossistema (confirmado em 03/07/2026 a partir da VM n8n); a liberação dela segue pendente como melhoria (diagnóstico).
+> 🔀 **Roteamento do nginx (portas 80 e 11434):** `/v1/*` → **vLLM** (API OpenAI-compatible: chat, visão, tools); todo o resto (`/api/*` etc.) → **Ollama** (API nativa). A **porta 80 é o padrão** (URL sem porta — `http://llm.nuvem.ti.embrapa.br/v1` —, alinhado aos demais GPU Servers da plataforma; liberação de firewall para as VMs do ecossistema solicitada à GTI em 04/08/2026). A **11434 segue funcional** durante a transição — clientes atuais (Open WebUI, n8n "OpenAI Chat Model") com `base_url` `http://llm.nuvem.ti.embrapa.br:11434/v1` e API key dummy continuam operando sem mudança. O firewall da TI filtra a 11435 para as VMs do ecossistema (confirmado em 03/07/2026 a partir da VM n8n); a liberação dela segue pendente como melhoria (diagnóstico).
 
 ## Requisitos
 
