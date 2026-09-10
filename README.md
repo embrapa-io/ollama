@@ -144,6 +144,15 @@ curl -s http://localhost:${PORT_SGLANG}/metrics | grep -E 'running|kv_cache'
 
 ## Comandos Úteis
 
+### Monitoramento das GPUs
+
+```bash
+sudo bash setup/dcgm.sh          # DCGM exporter em localhost:9400 + coleta pelo Alloy
+```
+
+Idempotente. Depois de rodar, as métricas aparecem no Grafana da plataforma, por
+exemplo em `DCGM_FI_DEV_GPU_UTIL{instance="<hostname>"}`.
+
 ### Ollama (CPU)
 
 ```bash
