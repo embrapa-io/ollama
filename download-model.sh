@@ -50,6 +50,24 @@ if [[ -z "${HF_TOKEN:-}" ]]; then
   echo "⚠️  Baixando sem autenticação — sujeito a rate-limit."
 fi
 
+# Trava contra volume desmontado (incidente de 11/09/2026 em llm.nuvem: o LV do
+# /dados não ativou no boot, o download caiu na raiz e encheu o disco). Se o
+# destino começa por um diretório que costuma ser ponto de montagem (/dados,
+# /data, /mnt, /srv) mas esse diretório está no mesmo filesystem da raiz, aborta.
+# Para forçar (destino deliberadamente na raiz): ALLOW_ROOT_FS=1 ./download-model.sh …
+top="/$(echo "$TARGET_DIR" | cut -d/ -f2)"
+case "$top" in
+  /dados|/data|/mnt|/srv)
+    mp="$(findmnt -rn -T "$top" -o TARGET 2>/dev/null || true)"   # filesystem que contém $top
+    if [[ "${ALLOW_ROOT_FS:-0}" != "1" ]] && [[ -d "$top" ]] && [[ "$mp" == "/" ]]; then
+      echo "✗ $top não é um ponto de montagem: está no filesystem da raiz (/)." >&2
+      echo "  O volume esperado não está montado — o download encheria o disco do sistema." >&2
+      echo "  Confira: lsblk; sudo lvscan; findmnt $top. Para forçar: ALLOW_ROOT_FS=1 $0 …" >&2
+      exit 1
+    fi
+    ;;
+esac
+
 mkdir -p "$TARGET_DIR"
 
 # HF_XET_HIGH_PERFORMANCE=1 acelera downloads grandes (substitui o antigo
