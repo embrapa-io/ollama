@@ -251,7 +251,7 @@ A configuração padrão do repositório (`.env.example`, `docker-compose.yaml`)
 **Se falhar, rollback no `.env`:**
 
 ```bash
-SGLANG_MODEL_PATH=/data/sglang/models/qwen2.5-vl-32b-instruct-awq
+SGLANG_MODEL_PATH=/dados/sglang/models/qwen2.5-vl-32b-instruct-awq
 SGLANG_MODEL_REPO=Qwen/Qwen2.5-VL-32B-Instruct-AWQ
 SGLANG_SERVED_MODEL_NAME=qwen2.5-vl-32b-instruct-awq
 SGLANG_CONTEXT_LENGTH=65536
