@@ -4,9 +4,7 @@
 Configuração de _deploy_ de uma _stack_ de inferência LLM em GPU Servers do ecossistema do **Embrapa I/O**, combinando:
 
 - **[vLLM](https://github.com/vllm-project/vllm)** nas GPUs — servindo **`QuantTrio/Qwen3.6-27B-AWQ`** (dense, GDN híbrida, vision-language, tool calling, SWE-Bench Verified 73.4%) com API OpenAI-compatible. Texto, **visão** e tool calling **validados em Turing em 03/jul/2026**. O serviço `sglang` permanece sob profile como referência — em Turing ele só roda text-only (ver **Roadmap**).
-- **[Ollama](https://ollama.com)** em CPU — duas funções:
-  - _embeddings_ (bge-m3, nomic-embed-text, mxbai-embed-large, …) aproveitando AVX-512
-  - **`qwen3.6:35b-a3b`** (MoE, 3 B ativos) como chat/agentic de contingência em CPU
+- **[Ollama](https://ollama.com)** em CPU — **somente _embeddings_** (decisão de 14/09/2026): `bge-m3`, `qwen3-embedding:0.6b`, `embeddinggemma:300m`, `granite-embedding:278m` e `nomic-embed-text` (mantido a pedido de uma equipe), aproveitando AVX-512. Chat, visão e tools ficam exclusivamente no vLLM; os modelos de chat em CPU foram removidos. A lista publicada no catálogo da plataforma (`io/boilerplate/metadata/clusters.json`, bloco "SEDE 03") deve acompanhar a desta seção.
 
 ## Arquitetura
 
@@ -19,8 +17,7 @@ Server (dual Xeon Gold 6254, 256 GB RAM, 2× Quadro RTX 6000 24 GB)
 │
 └── CPU ──── Ollama (AVX-512, 72 threads)
               http://<host>:${PORT_OLLAMA}/api/* (nginx → bloqueia /api/pull etc.)
-              • embeddings (nó/API nativa: /api/embeddings)
-              • qwen3.6:35b-a3b (chat/agentic de contingência)
+              • embeddings apenas (API nativa: /api/embeddings)
 ```
 
 > 🔀 **Roteamento do nginx (portas 80 e 11434):** `/v1/*` → **vLLM** (API OpenAI-compatible: chat, visão, tools); todo o resto (`/api/*` etc.) → **Ollama** (API nativa). A **porta 80 é o padrão** (URL sem porta — `http://llm.nuvem.ti.embrapa.br/v1` —, alinhado aos demais GPU Servers da plataforma; liberação de firewall para as VMs do ecossistema solicitada à GTI em 04/08/2026). A **11434 segue funcional** durante a transição — clientes atuais (Open WebUI, n8n "OpenAI Chat Model") com `base_url` `http://llm.nuvem.ti.embrapa.br:11434/v1` e API key dummy continuam operando sem mudança. O firewall da TI filtra a 11435 para as VMs do ecossistema (confirmado em 03/07/2026 a partir da VM n8n); a liberação dela segue pendente como melhoria (diagnóstico).
@@ -59,15 +56,20 @@ cp .env.example .env
 ### 2. Baixar o modelo para o SGLang
 
 ```bash
-sudo mkdir -p /data/sglang/models
-sudo chown -R $USER:$USER /data/sglang
+# Antes de qualquer download: o volume de dados está montado?
+findmnt /dados || echo 'VOLUME NÃO MONTADO — não baixe nada'
+
+sudo mkdir -p /dados/sglang/models
+sudo chown -R $USER:$USER /dados/sglang
 
 ./download-model.sh
 # ou, para outro repositório/destino:
-# ./download-model.sh QuantTrio/Qwen3.6-27B-AWQ /data/sglang/models/qwen3.6-27b-awq
+# ./download-model.sh QuantTrio/Qwen3.6-27B-AWQ /dados/sglang/models/qwen3.6-27b-awq
 ```
 
-> O script lê `SGLANG_MODEL_REPO` e `SGLANG_MODEL_PATH` do `.env` e roda um container `python:3.12-slim` com `huggingface_hub + hf_transfer`, sem exigir Python no host. Para modelos _gated_ ou rate-limit, exporte `HF_TOKEN` ou coloque no `.env`.
+> O script lê `SGLANG_MODEL_REPO` e `SGLANG_MODEL_PATH` do `.env` e roda um container `python:3.12-slim` com `huggingface_hub[hf_xet]`, sem exigir Python no host. Para modelos _gated_ ou rate-limit, exporte `HF_TOKEN` ou coloque no `.env`.
+>
+> ⚠️ **Trava contra volume desmontado:** se o destino começa por `/dados`, `/data`, `/mnt` ou `/srv` e esse diretório está no mesmo filesystem da raiz, o script **aborta**. Foi o que aconteceu em 11/09/2026 no `llm.nuvem`: o LV do `/dados` não tinha sido ativado no boot, o modelo (21 GB) foi para a raiz de 105 GB e o disco chegou a 94 %. Confira `lsblk`, `sudo lvscan` e `findmnt /dados`; para forçar um destino deliberadamente na raiz, `ALLOW_ROOT_FS=1 ./download-model.sh …`.
 
 ### 3. Subir a stack
 
@@ -75,15 +77,17 @@ sudo chown -R $USER:$USER /data/sglang
 docker compose up --force-recreate --build --remove-orphans --wait
 ```
 
-### 4. (opcional) Puxar o Qwen3.6 no Ollama CPU
+### 4. Modelos de embedding no Ollama CPU
 
 ```bash
-# Chat/agentic MoE em CPU — ~22 GB, aproveita o AVX-512, ~15–25 tok/s
-docker compose exec ollama ollama pull qwen3.6:35b-a3b-q4_K_M
-
-# Embeddings
 docker compose exec ollama ollama pull bge-m3
+docker compose exec ollama ollama pull qwen3-embedding:0.6b
+docker compose exec ollama ollama pull embeddinggemma:300m
+docker compose exec ollama ollama pull granite-embedding:278m
+docker compose exec ollama ollama pull nomic-embed-text
 ```
+
+> Não puxar modelos de chat para o Ollama: chat é no vLLM. Ao acrescentar ou remover um embedding, atualizar também o `clusters.json` do `io/boilerplate/metadata` (bloco "SEDE 03 — Turing 48GB", campo `embedding.models`).
 
 > 🕐 O **primeiro boot do SGLang leva 10–15 minutos** compilando kernels (DeepGEMM/Triton/FlashInfer). Boots seguintes (com volume `sglang-cache` preservado) levam 1–2 minutos.
 
@@ -126,14 +130,13 @@ curl http://localhost:${PORT_SGLANG}/v1/chat/completions \
   }'
 ```
 
-**Ollama (embeddings e chat):**
+**Ollama (embeddings):**
 
 ```bash
 curl http://localhost:${PORT_OLLAMA}/api/embeddings \
   -d '{"model": "bge-m3", "prompt": "Embrapa Gado de Corte"}'
 
-curl http://localhost:${PORT_OLLAMA}/api/generate \
-  -d '{"model": "qwen3.6:35b-a3b-q4_K_M", "prompt": "Explique em uma frase o que é Embrapa."}'
+docker compose exec ollama ollama list   # esperado: só os 5 modelos de embedding
 ```
 
 **Métricas do SGLang:**
@@ -157,8 +160,8 @@ exemplo em `DCGM_FI_DEV_GPU_UTIL{instance="<hostname>"}`.
 
 ```bash
 docker compose exec ollama ollama ls
-docker compose exec ollama ollama run qwen3.6:35b-a3b-q4_K_M
 docker compose exec ollama ollama pull bge-m3
+docker compose exec ollama ollama rm <modelo>   # remover o que não for embedding
 ```
 
 Modelos em: https://ollama.com/search
