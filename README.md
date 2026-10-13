@@ -145,6 +145,35 @@ docker compose exec ollama ollama list   # esperado: só os 5 modelos de embeddi
 curl -s http://localhost:${PORT_SGLANG}/metrics | grep -E 'running|kv_cache'
 ```
 
+## Atualização diária (cron)
+
+O host roda `update.sh` todo dia às 06h25 UTC, com a saída em `/var/log/ollama_update_<data>.log`:
+
+```
+25 6 * * * /root/ollama/update.sh > /var/log/ollama_update_$(date +\%F_\%H-\%M-\%S).log 2>&1
+```
+
+O script faz `git pull`, `docker compose pull`, `docker compose up --wait` (sem `--force-recreate`:
+só recria o serviço cuja imagem ou configuração mudou) e a limpeza de imagens, volumes órfãos da
+stack, cache de build e logs com mais de 30 dias. Duas proteções nascidas do incidente de
+09–12/10/2026, em que o driver NVIDIA foi trocado pelo `unattended-upgrades` com o servidor no ar e
+o vLLM ficou quatro dias parado enquanto imagens novas enchiam o disco raiz:
+
+- **Preflight do driver.** Se `nvidia-smi -L` falhar (bibliotecas de usuário numa versão e módulo
+  do kernel em outra, `NVRM: API mismatch` no `dmesg`), nenhum contêiner é recriado e o script sai
+  com erro; a limpeza roda mesmo assim. A saída é reiniciar o host na próxima janela.
+- **Driver fora do `unattended-upgrades`.** Instale uma vez:
+
+  ```bash
+  sudo cp setup/unattended-upgrades-nvidia.conf /etc/apt/apt.conf.d/51nvidia-hold
+  ```
+
+  Driver (e módulos NVIDIA do kernel) passam a ser atualizados de propósito, em janela e com
+  reboot: `sudo apt update && sudo apt install nvidia-driver-580 && sudo reboot`.
+
+No Grafana da plataforma, a regra **"vLLM parado — GPUs sem modelo carregado"** (pasta Infra) avisa
+no space de alertas críticos quando a VRAM fica zerada por 15 minutos.
+
 ## Comandos Úteis
 
 ### Monitoramento das GPUs
