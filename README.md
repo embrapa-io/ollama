@@ -174,6 +174,29 @@ o vLLM ficou quatro dias parado enquanto imagens novas enchiam o disco raiz:
 No Grafana da plataforma, a regra **"vLLM parado — GPUs sem modelo carregado"** (pasta Infra) avisa
 no space de alertas críticos quando a VRAM fica zerada por 15 minutos.
 
+### Host com outra stack na GPU
+
+Desde 19/10/2026 o **llm.nuvem** não serve mais o vLLM: as duas GPUs ficaram com o **Forge**
+(`embrapa-io_forge_release`, pelo Releaser: Whisper do `speaches` na GPU 0 e `docling` na GPU 1), e o
+modelo de chat do Forge vem dos GPU Servers da Sede. A sequência, reconstituída pelo Loki (horário de
+Campo Grande): às 10h32 o contêiner do vLLM foi parado à mão; às 10h37, `apt upgrade` (docker-ce 29.9.1,
+containerd 2.4.2, nvidia-container-toolkit 1.20.1); às 10h39, reboot; às 11h50, a primeira subida do
+Forge na porta 80, que era do nginx desta stack. O alerta crítico de 10h48 a 11h53 foi esse
+desligamento, não uma falha: a regra entrou em _pending_ às 10h33, disparou às 10h48 (15 min) e às
+11h53 foi **pausada**, o que o histórico mostra como "Normal (Paused)" e pareceu resolução sozinha. O
+cron deste script saiu do host no mesmo dia (o último log é o de 19/10).
+
+Duas proteções para não repetir a confusão:
+
+- **`update.sh` não religa a stack** quando há contêiner de outro projeto do Compose com GPU NVIDIA
+  reservada: o `docker compose up` ligaria de novo o vLLM parado de propósito, que reserva 90 % das duas
+  GPUs e derrubaria a outra stack. O log diz quais contêineres ocupam as GPUs. Para voltar o vLLM a um
+  host assim, pare antes a outra stack.
+- **A regra do vLLM fica pausada no llm.nuvem.** A métrica dela (`DCGM_FI_DEV_FB_USED` < 1 GiB) não
+  distingue o vLLM de outro processo na GPU: com o Forge carregando o Whisper ela daria "vLLM no ar"
+  sem vLLM nenhum. Se o vLLM voltar ao host, troque a condição por uma que olhe o próprio vLLM (logs do
+  serviço `vllm` no Loki ou `/v1/models` respondendo) antes de despausar.
+
 ## Comandos Úteis
 
 ### Monitoramento das GPUs
